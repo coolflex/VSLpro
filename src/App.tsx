@@ -1,116 +1,75 @@
-import React, { useState, useEffect, Component } from 'react';
-import { LandingPage } from './components/LandingPage';
-import { Dashboard } from './components/Dashboard';
-import { auth, googleProvider } from './firebase';
-import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { motion, AnimatePresence } from 'motion/react';
-
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: any;
-}
-
-// Error Boundary Component
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false, error: null };
-
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("Uncaught error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-[#121212] p-4 text-white">
-          <div className="max-w-md w-full bg-[#1e1e1e] rounded-xl shadow-lg p-8 text-center border border-white/10">
-            <h1 className="text-2xl font-bold text-red-500 mb-4">Something went wrong</h1>
-            <p className="text-gray-400 mb-6">
-              {this.state.error?.message || "An unexpected error occurred."}
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-[#1DB954] text-black font-bold px-6 py-2 rounded-full hover:scale-105 transition-transform"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (this as any).props.children;
-  }
-}
+import { useState } from 'react';
+import './index.css';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const getEmbedUrl = (url: string) => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (match) return `https://www.youtube.com/embed/${match[1]}?controls=0&modestbranding=1&rel=0`;
+    return url;
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#121212]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1DB954]"></div>
-      </div>
-    );
-  }
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-[#121212] text-white selection:bg-[#1DB954] selection:text-black">
-        <AnimatePresence mode="wait">
-          {!user ? (
-            <motion.div
-              key="landing"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <LandingPage onGetStarted={handleLogin} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <Dashboard user={user} onLogout={handleLogout} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </ErrorBoundary>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontFamily: 'sans-serif' }}>
+      <header style={{ padding: '24px', borderBottom: '1px solid #222', textAlign: 'center' }}>
+        <h1 style={{ margin: 0, fontSize: '2rem', color: '#6366f1' }}>VSLPro</h1>
+        <p style={{ color: '#888', marginTop: '8px' }}>Professional YouTube VSL Embed Generator</p>
+      </header>
+      <main style={{ maxWidth: '800px', margin: '48px auto', padding: '0 24px' }}>
+        {!submitted ? (
+          <div style={{ background: '#111', padding: '32px', borderRadius: '12px', border: '1px solid #222' }}>
+            <h2 style={{ marginTop: 0 }}>Create Your VSL Embed</h2>
+            <form onSubmit={handleSubmit}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#aaa' }}>YouTube Video URL</label>
+              <input
+                type="text"
+                value={videoUrl}
+                onChange={e => setVideoUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                style={{ width: '100%', padding: '12px', background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontSize: '16px', boxSizing: 'border-box' }}
+                required
+              />
+              <button
+                type="submit"
+                style={{ marginTop: '16px', padding: '12px 32px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}
+              >
+                Generate VSL Player
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
+              <iframe
+                src={getEmbedUrl(videoUrl)}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                title="VSL Player"
+              />
+            </div>
+            <div style={{ marginTop: '24px', background: '#111', padding: '24px', borderRadius: '12px', border: '1px solid #222' }}>
+              <h3 style={{ marginTop: 0 }}>Embed Code</h3>
+              <pre style={{ background: '#1a1a1a', padding: '16px', borderRadius: '8px', overflow: 'auto', color: '#4ade80', fontSize: '14px' }}>
+                {`<iframe src="${getEmbedUrl(videoUrl)}" style="width:100%;aspect-ratio:16/9;border:none" allow="autoplay;encrypted-media" allowfullscreen></iframe>`}
+              </pre>
+              <button
+                onClick={() => setSubmitted(false)}
+                style={{ marginTop: '16px', padding: '10px 24px', background: '#333', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                ← Back
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
